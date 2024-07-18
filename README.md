@@ -42,12 +42,12 @@ Create a socket consumer which listen incoming socket requests and manage it. th
     	return true
     }
     
-    // Create group
+    // add to group
     func (c *ChatConsumer) Accept() {
     	c.GroupAdd(c.groupName)
     }
     
-    // Close group
+    // remove from group
     func (c *ChatConsumer) Disconnect() {
     	c.GroupDiscard(c.groupName)
     }
