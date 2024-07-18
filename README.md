@@ -38,7 +38,7 @@ Create a socket consumer which listen incoming socket requests and manage it. th
     }
     
     // Aurhenticate user
-    func (c *ChatConsumer) Connect() {
+    func (c *ChatConsumer) Connect() bool {
     	return true
     }
     
