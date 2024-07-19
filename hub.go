@@ -73,10 +73,14 @@ func (hub *Hub) GroupDiscard(id string, c *Consumer) {
 
 // Send to group
 func (hub *Hub) GroupSend(id string, message *Message) {
-	hub.groups[id].broadcast(message)
+	if _, ok := hub.groups[id]; ok {
+		hub.groups[id].broadcast(message)
+	}
 }
 
 // Send to group except consumer
 func (hub *Hub) GroupSendExcept(id string, message *Message, except *Consumer) {
-	hub.groups[id].broadcastExcept(message, except)
+	if _, ok := hub.groups[id]; ok {
+		hub.groups[id].broadcastExcept(message, except)
+	}
 }
