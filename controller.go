@@ -3,6 +3,7 @@ package socketconsumer
 import (
 	"bytes"
 	"log"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -54,6 +55,9 @@ func (cc *ConsumerController) send(message *Message) {
 func (cc *ConsumerController) WebsocketReceive() {
 	defer cc.close()
 
+	cc.conn.SetReadDeadline(time.Now().Add(pongWait))
+	cc.conn.SetPongHandler(func(string) error { cc.conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
+
 	for {
 		_, message, err := cc.conn.ReadMessage()
 		if err != nil {
@@ -69,31 +73,42 @@ func (cc *ConsumerController) WebsocketReceive() {
 
 // Write message to websoket
 func (cc *ConsumerController) WebsocketSend() {
-	defer cc.conn.Close()
+	ticker := time.NewTicker(pingPeriod)
+
+	defer func() {
+		ticker.Stop()
+		cc.conn.Close()
+	}()
 
 	for {
-		message, ok := <-cc.sendChan
+		select {
+		case message, ok := <-cc.sendChan:
+			if !ok {
+				cc.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				return
+			}
 
-		if !ok {
-			cc.conn.WriteMessage(websocket.CloseMessage, []byte{})
-			return
-		}
+			w, err := cc.conn.NextWriter(websocket.TextMessage)
+			if err != nil {
+				return
+			}
+			w.Write(message)
 
-		w, err := cc.conn.NextWriter(websocket.TextMessage)
-		if err != nil {
-			return
-		}
-		w.Write(message)
+			// Add queued chat messages to the current websocket message.
+			n := len(cc.sendChan)
+			for i := 0; i < n; i++ {
+				w.Write(newline)
+				w.Write(<-cc.sendChan)
+			}
 
-		// Add queued chat messages to the current websocket message.
-		n := len(cc.sendChan)
-		for i := 0; i < n; i++ {
-			w.Write(newline)
-			w.Write(<-cc.sendChan)
-		}
-
-		if err := w.Close(); err != nil {
-			return
+			if err := w.Close(); err != nil {
+				return
+			}
+		case <-ticker.C:
+			cc.conn.SetWriteDeadline(time.Now().Add(writeWait))
+			if err := cc.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				return
+			}
 		}
 	}
 }
