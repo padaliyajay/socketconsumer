@@ -90,6 +90,7 @@ func (cc *ConsumerController) WebsocketSend() {
 
 			w, err := cc.conn.NextWriter(websocket.TextMessage)
 			if err != nil {
+				log.Println(err)
 				return
 			}
 			w.Write(message)
@@ -105,8 +106,8 @@ func (cc *ConsumerController) WebsocketSend() {
 				return
 			}
 		case <-ticker.C:
-			cc.conn.SetWriteDeadline(time.Now().Add(writeWait))
-			if err := cc.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+			if err := cc.conn.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
+				log.Println(err)
 				return
 			}
 		}
